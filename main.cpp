@@ -8,16 +8,70 @@ string instrument_id = "BCH-USD-181228";
 string order_id = "1641326222656512";
 string currency  = "bch";
 
+
+time_t strTime2unix(std::string &timeStamp) {
+    tm tm;
+    int ms = 0;
+    memset(&tm, 0, sizeof(tm));
+
+    sscanf(timeStamp.c_str(), "%d-%d-%dT%d:%d:%d.%dZ",
+           &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+           &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
+           &ms);
+
+    tm.tm_year -= 1900;
+    tm.tm_mon--;
+
+    return mktime(&tm)* 1000 + ms;
+}
+
+OKAPI okapi;
+
+
+
+int mycount = 10;
+
+void on_msg(std::string timestamp)
+{
+    time_t tick_timestamp = strTime2unix(timestamp);
+    value param;
+    param["type"] = json::value("limit");
+    param["side"] = json::value("buy");
+    param["instrument_id"] = json::value("BTC-USDT");
+    param["size"] = json::value("0.001");
+    param["price"] = json::value("10");
+
+
+    value result = value::parse(okapi.AddSpotOrder(param));
+    std::string orderid = result["order_id"].as_string();
+    result = value::parse(okapi.GetSpotOrderByInstrumentIdAndOrderId(orderid, "BTC-USDT"));
+    std::string bb = result["created_at"].as_string();
+    time_t order_timestamp = strTime2unix(bb);
+
+    static std::vector<int> timestamps;
+    timestamps.push_back(order_timestamp - tick_timestamp);
+    //std::cout << bb << ' ' << timestamp << ' ' << order_timestamp - tick_timestamp << endl;
+
+    if (--mycount ==0){
+        for(int x: timestamps)
+        {
+            std::cout << x << std::endl;
+        }
+        exit(0);
+    }
+
+}
+
 int main(int argc, char *args[]) {
-    OKAPI okapi;
+    // OKAPI okapi;
     /************************** set config **********************/
     struct Config config;
-    config.SecretKey = "";
-    config.ApiKey = "";
+    config.SecretKey = "D5169B017936C15E89BB5B17F8D34380";
+    config.ApiKey = "2c62ef9f-6fbe-4232-8696-5eb051c862d5";
     config.Endpoint = "https://www.okex.com";
     config.I18n = "en_US";
-    config.IsPrint = true;
-    config.Passphrase = "";
+    config.IsPrint = false;
+    config.Passphrase = "123jackie";
 
     okapi.SetConfig(config);
     /************************** test examples **********************/
@@ -87,7 +141,7 @@ int main(int argc, char *args[]) {
         okapi.GetFuturesInstrumentHolds(instrument_id);
     }
 
-    if(1){
+    if(0){
         string swap_instrument_id = "BTC-USD-SWAP";
         value postSwapCancelBatchOrderParams;
         value corders = value::array();
@@ -103,14 +157,14 @@ int main(int argc, char *args[]) {
     }
 
     /************************** websocket test examples **********************/
-//    string uri = U("ws://real.okex.com:10442/ws/v3");
-    string uri = U("ws://192.168.80.113:10442/ws/v3?_compress=false");
+    string uri = U("wss://real.okex.com:8443/ws/v3");
+//    string uri = U("ws://192.168.80.113:10442/ws/v3?_compress=false");
     if (0) {
         pplx::create_task([=] {
-            okapi_ws::SubscribeWithoutLogin(uri, U("swap/ticker:BTC-USD-SWAP"));
+            okapi_ws::SubscribeWithoutLogin(uri, U("swap/ticker:BTC-USD-SWAP"), on_msg);
         });
         sleep(20);
-        okapi_ws::UnsubscribeWithoutLogin(uri, U("swap/ticker:BTC-USD-SWAP"));
+        //okapi_ws::UnsubscribeWithoutLogin(uri, U("swap/ticker:BTC-USD-SWAP"));
 
         sleep(20);
         pplx::create_task([=] {
@@ -120,13 +174,13 @@ int main(int argc, char *args[]) {
         okapi_ws::Unsubscribe(uri, U("swap/account:BTC-USD-SWAP"), config.ApiKey, config.Passphrase, config.SecretKey);
     }
 
-    if (0) {
+    if (1) {
         //深度频道
         pplx::create_task([=] {
-            okapi_ws::SubscribeWithoutLogin(uri, U("swap/depth:BTC-USD-SWAP"));
+            okapi_ws::SubscribeWithoutLogin(uri, U("spot/depth:BTC-USDT"), on_msg);
         });
         sleep(20);
-        okapi_ws::UnsubscribeWithoutLogin(uri, U("swap/depth:BTC-USD-SWAP"));
+//        okapi_ws::UnsubscribeWithoutLogin(uri, U("spot/depth:BTC-USDT"));
     }
 
     if (0) {
@@ -152,3 +206,5 @@ int main(int argc, char *args[]) {
     }
     return 0;
 }
+
+

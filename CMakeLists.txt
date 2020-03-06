@@ -19,6 +19,8 @@ if(UNIX) # Darwing or Linux
     else()
         find_package(OpenSSL 1.1.1 REQUIRED)
         set(OPENSSL_VERSION "1.1.1")
+        set(cpprestsdk_DIR /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/)
+        find_package(cpprestsdk REQUIRED)
     endif()
 
 elseif(WIN32) # Windows systems including Win64.
@@ -56,15 +58,13 @@ set(HEADER_SEARCH_PATHS ${Boost_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
 # library search paths ...
 if(APPLE)
     set(OPENSSL_LIBS "/usr/local/Cellar/openssl/${OPENSSL_VERSION}/lib/libssl.1.0.0.dylib;/usr/local/Cellar/openssl/${OPENSSL_VERSION}/lib/libcrypto.1.0.0.dylib")
-    set(CPPRESTSDK_LIBRARY "${PROJECT_SOURCE_DIR}/libs/cpprestsdk/build.debug/Binaries/libcpprest.a")
+    set(CPPRESTSDK_LIBRARY "${CPPRESTSDK_LIBRARY}")
     set(ZIP_LIBRARY "/usr/local/Cellar/zlib/1.2.11/lib/libz.dylib")
 
     set(LIBRARIES_SEARCH_PATHS ${OPENSSL_LIBS} ${Boost_LIBRARIES} ${CPPRESTSDK_LIBRARY} ${ZIP_LIBRARY})
 else()
     set(OPENSSL_LIBS "${OPENSSL_LIBRARIES}")
-    set(CPPRESTSDK_LIBRARY "${PROJECT_SOURCE_DIR}/libs/cpprestsdk/build.debug/Binaries/libcpprest.a")
-
-    set(LIBRARIES_SEARCH_PATHS ${CPPRESTSDK_LIBRARY} ${OPENSSL_LIBS} ${Boost_LIBRARIES})
+    set(LIBRARIES_SEARCH_PATHS ${CPPRESTSDK_LIBRARY} ${OPENSSL_LIBS} ${Boost_LIBRARIES}  ${ZLIB_LIBRARY})
 endif()
 
 message(BOOST_LIBS " ${Boost_LIBRARIES}")
@@ -80,5 +80,5 @@ if (APPLE)
     target_link_libraries(${PROJECT_NAME} ${LIBRARIES_SEARCH_PATHS})
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-W1, -F/Library/Frameworks")
 else()
-    target_link_libraries(${PROJECT_NAME} ${LIBRARIES_SEARCH_PATHS})
+    target_link_libraries(${PROJECT_NAME} ${LIBRARIES_SEARCH_PATHS} cpprest)
 endif()

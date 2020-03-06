@@ -11,6 +11,7 @@
 #define BUFLEN 65536
 
 using namespace web;
+using namespace web::json;
 using namespace web::websockets::client;
 using namespace concurrency::streams;       // Asynchronous streams
 
@@ -42,15 +43,15 @@ using namespace concurrency::streams;       // Asynchronous streams
  swap/depth5 //深度数据频道，每次返回前5档
  swap/mark_price// 标记价格频道
 */
-void okapi_ws::SubscribeWithoutLogin(std::string url, std::string channels){
-    RequestWithoutLogin(url, channels, "subscribe");
+void okapi_ws::SubscribeWithoutLogin(std::string url, std::string channels, void(*on_msg)(std::string timestamp)){
+    RequestWithoutLogin(url, channels, "subscribe", on_msg);
 }
 
-void okapi_ws::UnsubscribeWithoutLogin(std::string url, std::string channels){
-    RequestWithoutLogin(url, channels, "unsubscribe");
-}
+//void okapi_ws::UnsubscribeWithoutLogin(std::string url, std::string channels){
+//    RequestWithoutLogin(url, channels, "unsubscribe");
+//}
 
-void okapi_ws::RequestWithoutLogin(std::string url, std::string channels, std:: string op) {
+void okapi_ws::RequestWithoutLogin(std::string url, std::string channels, std::string op, void(*on_msg)(std::string timestamp)) {
     websocket_client client;
 
     auto fileStream = std::make_shared<concurrency::streams::ostream>();
@@ -95,11 +96,17 @@ void okapi_ws::RequestWithoutLogin(std::string url, std::string channels, std:: 
                               strcpy((char *) data, (char *) buf);
                           }
 
-                          printf("receive success: \n");
-                          printf("\t data: %s\n", data);
-                          printf("\t datalen: %ld\n\n\n", datalen);
+//                          printf("receive success: \n");
+//                          printf("\t data: %s\n", data);
+//                          printf("\t datalen: %ld\n\n\n", datalen);
+                        utility::string_t ss = (char*)data;
+                        value bb = value::parse(ss);
+                        if (bb.has_field("data")){
+                            on_msg(bb["data"][0]["timestamp"].as_string());
+                            // std::cout << bb["data"][0]["timestamp"].as_string() << std::endl;
+                        }
 
-                          msg = client.receive().get();
+                        msg = client.receive().get();
                       }
                       return msg.body().read_to_end(fileStream->streambuf());
 
